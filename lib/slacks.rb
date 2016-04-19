@@ -1,5 +1,3 @@
 require "slacks/version"
-
-module Slacks
-  # Your code goes here...
-end
+require "slacks/core_ext/exception"
+require "slacks/session"
