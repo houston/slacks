@@ -1,30 +1,21 @@
-require "thread_safe"
+require "attentive/listener_collection"
+require "slacks/listener"
 
 module Slacks
-  class ListenerCollection
+  class ListenerCollection < Attentive::ListenerCollection
 
-    def initialize
-      @listeners = ThreadSafe::Array.new
+    def overhear(*args, &block)
+      options = args.last.is_a?(::Hash) ? args.pop : {}
+      options[:context] = { in: :any }
+      listen_for(*args, options, &block)
     end
 
-    def listen_for(matcher, flags=[], &block)
-      Listener.new(self, matcher, true, flags, block).tap do |listener|
-        @listeners.push listener
+    def listen_for(*args, &block)
+      options = args.last.is_a?(::Hash) ? args.pop : {}
+
+      Slacks::Listener.new(self, args, options, block).tap do |listener|
+        push listener
       end
-    end
-
-    def overhear(matcher, flags=[], &block)
-      Listener.new(self, matcher, false, flags, block).tap do |listener|
-        @listeners.push listener
-      end
-    end
-
-    def each(&block)
-      @listeners.each(&block)
-    end
-
-    def delete(listener)
-      @listeners.delete listener
     end
 
   end

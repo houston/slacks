@@ -2,17 +2,17 @@ require "slacks/event"
 
 module Slacks
   class RtmEvent < Event
-    attr_reader :match, :message_object
+    attr_reader :match
 
-    def initialize(session: nil, message: nil, match_data: nil, listener: nil)
-      super(session: session, message: message.text, channel: message.channel, sender: message.sender)
-      @message_object = message
-      @match = match_data
-      @listener = listener
+    def initialize(session, match)
+      @match = match
+      @listener = match.listener
+      message = match.message
+      super(session: session, message: message, channel: message.channel, sender: message.sender)
     end
 
     def matched?(key)
-      match[key].present?
+      match.matched?(key)
     end
 
     def stop_listening!
@@ -20,7 +20,7 @@ module Slacks
     end
 
     def react(emoji)
-      message_object.add_reaction(emoji)
+      message.add_reaction(emoji)
     end
 
   private

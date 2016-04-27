@@ -46,6 +46,7 @@ module Slacks
         :unfurl_links, :unfurl_media, :icon_url, :icon_emoji].member?(key) })
       api("chat.postMessage", params)
     end
+    alias :say :send_message
 
     def add_reaction(emojis, message)
       Array(emojis).each do |emoji|

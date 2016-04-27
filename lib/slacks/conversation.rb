@@ -12,8 +12,8 @@ module Slacks
       @listeners = ThreadSafe::Array.new
     end
 
-    def listen_for(matcher, flags=[], &block)
-      session.listen_for(matcher, flags, &block).tap do |listener|
+    def listen_for(*args, &block)
+      session.listen_for(*args, &block).tap do |listener|
         listener.conversation = self
         listeners.push listener
       end
@@ -29,7 +29,7 @@ module Slacks
     alias :say :reply
 
     def ask(question, expect: nil)
-      listen_for(expect) do |e|
+      listen_for(*Array(expect)) do |e|
         e.stop_listening!
         yield e
       end
