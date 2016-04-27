@@ -27,9 +27,10 @@ module Slacks
     def start!
       @slack = Slacks::Connection.new(self, token)
 
-      slack.listen! do |message|
-        process_message(message)
-      end
+      slack.listen!(self)
+    end
+
+    def connected
     end
 
     def error(message)
@@ -45,9 +46,7 @@ module Slacks
       respond_to? :"_apply_#{flag}", true
     end
 
-  protected
-
-    def process_message(data)
+    def message(data)
 
       # Don't respond to things that another bot said
       return if data.fetch("subtype", "message") == "bot_message"

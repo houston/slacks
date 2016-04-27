@@ -60,7 +60,7 @@ module Slacks
 
 
 
-    def listen!
+    def listen!(callbacks)
       response = api("rtm.start")
 
       unless response["ok"]
@@ -69,6 +69,8 @@ module Slacks
       end
 
       store_context!(response)
+
+      callbacks.connected
 
       client = Slacks::Driver.new
       client.connect_to websocket_url
@@ -94,7 +96,7 @@ module Slacks
           next if data["user"] == bot.id
           # ...or to messages with no text
           next if data["text"].nil? || data["text"].empty?
-          yield data
+          callbacks.message(data)
         end
       end
 
@@ -102,7 +104,7 @@ module Slacks
 
     rescue EOFError
       # Slack hung up on us, we'll ask for a new WebSocket URL and reconnect.
-      session.error "Websocket Driver received EOF; reconnecting"
+      callbacks.error "Websocket Driver received EOF; reconnecting"
       retry
     end
 
