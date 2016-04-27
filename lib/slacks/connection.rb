@@ -1,26 +1,27 @@
 require "slacks/bot_user"
-require "slacks/team"
 require "slacks/channel"
-require "slacks/guest_channel"
-require "slacks/conversation"
 require "slacks/driver"
-require "slacks/rtm_event"
-require "slacks/listener"
-require "slacks/message"
-require "slacks/user"
 require "slacks/errors"
+require "slacks/guest_channel"
+require "slacks/rtm_event"
+require "slacks/team"
+require "slacks/user"
 require "faraday"
 require "faraday/raise_errors"
 
 module Slacks
   class Connection
     attr_reader :team, :bot, :token
+    attr_accessor :typing_speed
 
     EVENT_MESSAGE = "message".freeze
     EVENT_GROUP_JOINED = "group_joined".freeze
     EVENT_USER_JOINED = "team_join".freeze
 
-    def initialize(session, token)
+    def initialize(token, options={})
+      @token = token
+      @typing_speed = options.fetch(:typing_speed, 100.0)
+
       @user_ids_dm_ids = {}
       @users_by_id = {}
       @user_id_by_name = {}
@@ -28,9 +29,6 @@ module Slacks
       @group_id_by_name = {}
       @channels_by_id = {}
       @channel_id_by_name = {}
-
-      @session = session
-      @token = token
     end
 
 
@@ -121,23 +119,23 @@ module Slacks
       when /^U/ then find_user(id)
       when /^D/
         user = find_user(get_user_id_for_dm(id))
-        Slacks::Channel.new session, {
+        Slacks::Channel.new self, {
           "id" => id,
           "is_im" => true,
           "name" => user.username }
       when /^G/
-        Slacks::Channel.new session, groups_by_id.fetch(id) do
+        Slacks::Channel.new self, groups_by_id.fetch(id) do
           raise ArgumentError, "Unable to find a group with the ID #{id.inspect}"
         end
       else
-        Slacks::Channel.new session, channels_by_id.fetch(id) do
+        Slacks::Channel.new self, channels_by_id.fetch(id) do
           raise ArgumentError, "Unable to find a channel with the ID #{id.inspect}"
         end
       end
     end
 
     def find_user(id)
-      Slacks::User.new session, users_by_id.fetch(id) do
+      Slacks::User.new self, users_by_id.fetch(id) do
         raise ArgumentError, "Unable to find a user with the ID #{id.inspect}"
       end
     end
@@ -159,8 +157,7 @@ module Slacks
 
 
   private
-    attr_reader :session,
-                :user_ids_dm_ids,
+    attr_reader :user_ids_dm_ids,
                 :users_by_id,
                 :user_id_by_name,
                 :groups_by_id,

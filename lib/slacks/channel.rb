@@ -2,8 +2,8 @@ module Slacks
   class Channel
     attr_reader :id, :name, :type
 
-    def initialize(session, attributes={})
-      @session = session
+    def initialize(slack, attributes={})
+      @slack = slack
       @id = attributes["id"]
       @name = attributes["name"]
       @type = :channel
@@ -18,11 +18,11 @@ module Slacks
       first_message = messages.shift
       message_options = {}
       message_options = messages.shift if messages.length == 1 && messages[0].is_a?(Hash)
-      session.slack.send_message(first_message, message_options.merge(channel: id))
+      slack.send_message(first_message, message_options.merge(channel: id))
 
       messages.each do |message|
-        sleep message.length / session.typing_speed
-        session.slack.send_message(message, channel: id)
+        sleep message.length / slack.typing_speed
+        slack.send_message(message, channel: id)
       end
     end
     alias :say :reply
@@ -74,6 +74,6 @@ module Slacks
     end
 
   private
-    attr_reader :session
+    attr_reader :slack
   end
 end

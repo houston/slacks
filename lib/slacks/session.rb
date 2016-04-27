@@ -3,11 +3,10 @@ require "slacks/listener_collection"
 
 module Slacks
   class Session
-    attr_reader :listeners, :typing_speed, :token, :slack
+    attr_reader :listeners, :slack
 
     def initialize(token, &block)
-      @typing_speed = 100.0
-      @token = token
+      @slack = Slacks::Connection.new(token)
       @listeners = Slacks::ListenerCollection.new
 
       if block_given?
@@ -24,9 +23,8 @@ module Slacks
       listeners.overhear(matcher, flags, &block)
     end
 
-    def start!
-      @slack = Slacks::Connection.new(self, token)
 
+    def start!
       slack.listen!(self)
     end
 

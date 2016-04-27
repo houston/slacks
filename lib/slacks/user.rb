@@ -2,8 +2,8 @@ module Slacks
   class User
     attr_reader :id, :username, :email, :first_name, :last_name
 
-    def initialize(session, attributes={})
-      @session = session
+    def initialize(slack, attributes={})
+      @slack = slack
 
       profile = attributes["profile"]
       @id = attributes["id"]
@@ -25,5 +25,7 @@ module Slacks
       "@#{username}"
     end
 
+  private
+    attr_reader :slack
   end
 end
