@@ -1,3 +1,5 @@
+require "slacks/core_ext/exception"
+
 module Slacks
   class MigrationInProgress < RuntimeError
     def initialize
