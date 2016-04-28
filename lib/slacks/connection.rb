@@ -48,6 +48,21 @@ module Slacks
     end
     alias :say :send_message
 
+    def update_message(ts, message, options={})
+      channel = options.fetch(:channel) { raise ArgumentError, "Missing parameter :channel" }
+      attachments = Array(options[:attachments])
+      params = {
+        ts: ts,
+        channel: to_channel_id(channel),
+        text: message,
+        as_user: true, # post as the authenticated user (rather than as slackbot)
+        link_names: 1} # find and link channel names and user names
+      params.merge!(attachments: MultiJson.dump(attachments)) if attachments.any?
+      params.merge!(options.select { |key, _| [:username, :as_user, :parse, :link_names,
+        :unfurl_links, :unfurl_media, :icon_url, :icon_emoji].member?(key) })
+      api("chat.update", params)
+    end
+
     def add_reaction(emojis, message)
       Array(emojis).each do |emoji|
         api("reactions.add", {
