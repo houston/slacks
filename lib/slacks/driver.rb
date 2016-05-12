@@ -66,6 +66,10 @@ module Slacks
       @has_been_init = true
     end
 
+    def write(message)
+      @driver.text(message)
+    end
+
     def connected?
       @connected || false
     end

@@ -72,28 +72,29 @@ module Slacks
       end
     end
 
+    def typing_on(channel)
+      websocket.write MultiJson.dump(type: "typing", channel: to_channel_id(channel))
+    end
+
 
 
     def listen!(callbacks)
       response = api("rtm.start")
-
       unless response["ok"]
         raise MigrationInProgress if response["error"] == "migration_in_progress"
         raise ResponseError.new(response, response["error"])
       end
-
       store_context!(response)
 
+      @websocket = Slacks::Driver.new
+      websocket.connect_to websocket_url
       callbacks.connected
 
-      client = Slacks::Driver.new
-      client.connect_to websocket_url
-
-      client.on(:error) do |event|
+      websocket.on(:error) do |event|
         raise ConnectionError.new(event)
       end
 
-      client.on(:message) do |data|
+      websocket.on(:message) do |data|
         case data["type"]
         when EVENT_GROUP_JOINED
           group = data["channel"]
@@ -114,7 +115,7 @@ module Slacks
         end
       end
 
-      client.main_loop
+      websocket.main_loop
 
     rescue EOFError
       # Slack hung up on us, we'll ask for a new WebSocket URL and reconnect.
@@ -180,7 +181,8 @@ module Slacks
                 :group_id_by_name,
                 :channels_by_id,
                 :channel_id_by_name,
-                :websocket_url
+                :websocket_url,
+                :websocket
 
 
 
@@ -204,6 +206,7 @@ module Slacks
 
 
     def to_channel_id(name)
+      return name.id if name.is_a?(Slacks::Channel)
       return name if name =~ /^[DGC]/ # this already looks like a channel id
       return get_dm_for_username(name) if name.start_with?("@")
       return to_group_id(name) unless name.start_with?("#")

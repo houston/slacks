@@ -24,6 +24,10 @@ module Slacks
       channel.random_reply(*args)
     end
 
+    def typing
+      channel.typing
+    end
+
     def start_conversation!
       Conversation.new(session, channel, sender)
     end

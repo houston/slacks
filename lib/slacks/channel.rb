@@ -47,6 +47,10 @@ module Slacks
       end
     end
 
+    def typing
+      slack.typing_on(self)
+    end
+
     def direct_message?
       type == :direct_message
     end
