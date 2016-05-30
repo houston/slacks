@@ -50,6 +50,13 @@ module Slacks
     end
     alias :say :send_message
 
+    def get_message(channel, ts)
+      params = {
+        channel: to_channel_id(channel),
+        timestamp: ts }
+      api("reactions.get", params)
+    end
+
     def update_message(ts, message, options={})
       channel = options.fetch(:channel) { raise ArgumentError, "Missing parameter :channel" }
       attachments = Array(options[:attachments])
