@@ -157,6 +157,10 @@ module Slacks
       end
     end
 
+    def find_user_by_nickname(nickname)
+      find_user to_user_id(nickname)
+    end
+
 
 
     def user_exists?(username)
