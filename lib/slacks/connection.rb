@@ -17,6 +17,8 @@ module Slacks
     EVENT_MESSAGE = "message".freeze
     EVENT_GROUP_JOINED = "group_joined".freeze
     EVENT_USER_JOINED = "team_join".freeze
+    EVENT_REACTION_ADDED = "reaction_added".freeze
+    EVENT_REACTION_REMOVED = "reaction_removed".freeze
 
     def initialize(token, options={})
       @token = token
@@ -105,6 +107,16 @@ module Slacks
           user = data["user"]
           @users_by_id[user["id"]] = user
           @user_id_by_name[user["name"]] = user["id"]
+
+        when EVENT_REACTION_ADDED
+          # Only care if someone reacted to something the bot said
+          next unless data["item_user"] == bot.id
+          callbacks.reaction_added(data)
+
+        when EVENT_REACTION_REMOVED
+          # Only care if someone reacted to something the bot said
+          next unless data["item_user"] == bot.id
+          callbacks.reaction_removed(data)
 
         when EVENT_MESSAGE
           # Don't respond to things that this bot said

@@ -63,6 +63,12 @@ module Slacks
       end
     end
 
+    def reaction_added(data)
+    end
+
+    def reaction_removed(data)
+    end
+
   protected
 
     def invoke!(listener, event)
