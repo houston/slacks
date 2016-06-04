@@ -23,8 +23,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "multi_json"
   spec.add_dependency "faraday"
   spec.add_dependency "faraday-raise-errors"
-  spec.add_dependency "thread_safe"
-  spec.add_dependency "attentive"
+  spec.add_dependency "concurrent-ruby"
 
   spec.add_development_dependency "bundler", "~> 1.10"
   spec.add_development_dependency "rake", "~> 10.0"

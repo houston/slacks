@@ -1,9 +1,9 @@
 require "slacks/bot_user"
 require "slacks/channel"
 require "slacks/driver"
+require "slacks/observer"
 require "slacks/errors"
 require "slacks/guest_channel"
-require "slacks/rtm_event"
 require "slacks/team"
 require "slacks/user"
 require "faraday"
@@ -11,14 +11,10 @@ require "faraday/raise_errors"
 
 module Slacks
   class Connection
+    include ::Slacks::Observer
+
     attr_reader :team, :bot, :token
     attr_accessor :typing_speed
-
-    EVENT_MESSAGE = "message".freeze
-    EVENT_GROUP_JOINED = "group_joined".freeze
-    EVENT_USER_JOINED = "team_join".freeze
-    EVENT_REACTION_ADDED = "reaction_added".freeze
-    EVENT_REACTION_REMOVED = "reaction_removed".freeze
 
     def initialize(token, options={})
       @token = token
@@ -87,7 +83,7 @@ module Slacks
 
 
 
-    def listen!(callbacks)
+    def listen!
       response = api("rtm.start")
       unless response["ok"]
         raise MigrationInProgress if response["error"] == "migration_in_progress"
@@ -97,7 +93,7 @@ module Slacks
 
       @websocket = Slacks::Driver.new
       websocket.connect_to websocket_url
-      callbacks.connected
+      trigger "connected"
 
       websocket.on(:error) do |event|
         raise ConnectionError.new(event)
@@ -115,32 +111,33 @@ module Slacks
           @users_by_id[user["id"]] = user
           @user_id_by_name[user["name"]] = user["id"]
 
-        when EVENT_REACTION_ADDED
-          # Only care if someone reacted to something the bot said
-          next unless data["item_user"] == bot.id
-          callbacks.reaction_added(data)
-
-        when EVENT_REACTION_REMOVED
-          # Only care if someone reacted to something the bot said
-          next unless data["item_user"] == bot.id
-          callbacks.reaction_removed(data)
+        when EVENT_CHANNEL_CREATED
+          channel = data["channel"]
+          @channels_by_id[channel["id"]] = channel
+          @channel_id_by_name[channel["name"]] = channel["id"]
 
         when EVENT_MESSAGE
           # Don't respond to things that this bot said
           next if data["user"] == bot.id
           # ...or to messages with no text
           next if data["text"].nil? || data["text"].empty?
-          callbacks.message(data)
         end
+
+        trigger data["type"], data
       end
 
       websocket.main_loop
 
     rescue EOFError
       # Slack hung up on us, we'll ask for a new WebSocket URL and reconnect.
-      callbacks.error "Websocket Driver received EOF; reconnecting"
+      trigger "error", "Websocket Driver received EOF; reconnecting"
       retry
     end
+
+    EVENT_CHANNEL_CREATED = "channel_created".freeze
+    EVENT_GROUP_JOINED = "group_joined".freeze
+    EVENT_MESSAGE = "message".freeze
+    EVENT_USER_JOINED = "team_join".freeze
 
 
 
