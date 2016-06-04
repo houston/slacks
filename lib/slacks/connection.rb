@@ -43,6 +43,8 @@ module Slacks
       params.merge!(options.select { |key, _| [:username, :as_user, :parse, :link_names,
         :unfurl_links, :unfurl_media, :icon_url, :icon_emoji].member?(key) })
       api("chat.postMessage", params)
+    rescue Slacks::ResponseError
+      $!.response
     end
     alias :say :send_message
 
@@ -51,6 +53,8 @@ module Slacks
         channel: to_channel_id(channel),
         timestamp: ts }
       api("reactions.get", params)
+    rescue Slacks::ResponseError
+      $!.response
     end
 
     def update_message(ts, message, options={})
@@ -66,6 +70,8 @@ module Slacks
       params.merge!(options.select { |key, _| [:username, :as_user, :parse, :link_names,
         :unfurl_links, :unfurl_media, :icon_url, :icon_emoji].member?(key) })
       api("chat.update", params)
+    rescue Slacks::ResponseError
+      $!.response
     end
 
     def add_reaction(emojis, message)
@@ -75,6 +81,8 @@ module Slacks
           channel: message.channel.id,
           timestamp: message.timestamp })
       end
+    rescue Slacks::ResponseError
+      $!.response
     end
 
     def typing_on(channel)

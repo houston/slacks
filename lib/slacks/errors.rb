@@ -8,8 +8,11 @@ module Slacks
   end
 
   class ResponseError < RuntimeError
+    attr_reader :response
+
     def initialize(response, message)
       super message
+      @response = response
       additional_information[:response] = response
     end
   end
