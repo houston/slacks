@@ -32,4 +32,10 @@ module Slacks
       super "The bot is not in the channel #{channel} and cannot reply"
     end
   end
+
+  class UnableToDirectMessageError < ResponseError
+    def initialize(response, user_id)
+      super response, "Unable to direct message the user #{user_id.inspect}: #{response["error"]}"
+    end
+  end
 end

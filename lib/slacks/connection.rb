@@ -247,13 +247,11 @@ module Slacks
     end
 
     def get_dm_for_user_id(user_id)
-      channel_id = user_ids_dm_ids[user_id] ||= begin
+      user_ids_dm_ids[user_id] ||= begin
         response = api("im.open", user: user_id)
-        raise ArgumentError, "Unable to direct message the user #{user_id.inspect}: #{response["error"]}" unless response["ok"]
+        raise UnableToDirectMessageError.new(response, user_id) unless response["ok"]
         response["channel"]["id"]
       end
-      raise ArgumentError, "Unable to direct message the user #{user_id.inspect}" unless channel_id
-      channel_id
     end
 
 
