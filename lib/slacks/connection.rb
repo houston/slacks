@@ -109,6 +109,13 @@ module Slacks
 
       websocket.on(:message) do |data|
         case data["type"]
+        when NilClass
+          # Every event has a `type` property:
+          # https://api.slack.com/rtm#events
+          # If an event comes across without
+          # one, we'll skill it.
+          next
+
         when EVENT_GROUP_JOINED
           group = data["channel"]
           @groups_by_id[group["id"]] = group

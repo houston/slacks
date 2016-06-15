@@ -11,6 +11,7 @@ module Slacks
   protected
 
     def trigger(event, *args)
+      raise ArgumentError, "Must specify an event to trigger" unless event
       observers_of(event).each do |block|
         block.call(*args)
       end
