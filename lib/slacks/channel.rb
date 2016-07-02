@@ -51,6 +51,10 @@ module Slacks
       "<Slacks::Channel id=\"#{id}\" name=\"#{name}\">"
     end
 
+    def ==(other)
+      self.class == other.class && self.id == other.id
+    end
+
     def to_s
       return name if private?
       return "@#{name}" if direct_message?

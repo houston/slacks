@@ -25,6 +25,10 @@ module Slacks
       "@#{username}"
     end
 
+    def ==(other)
+      self.class == other.class && self.id == other.id
+    end
+
   private
     attr_reader :slack
   end
