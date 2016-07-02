@@ -27,26 +27,6 @@ module Slacks
     end
     alias :say :reply
 
-    def random_reply(replies)
-      if replies.is_a?(Hash)
-        weights = replies.values
-        unless weights.reduce(&:+) == 1.0
-          raise ArgumentError, "Reply weights don't add up to 1.0"
-        end
-
-        draw = rand
-        sum = 0
-        pick = nil
-        replies.each do |reply, weight|
-          pick = reply unless sum > draw
-          sum += weight
-        end
-        reply pick
-      else
-        reply replies.sample
-      end
-    end
-
     def typing
       slack.typing_on(self)
     end
