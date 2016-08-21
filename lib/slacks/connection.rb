@@ -17,6 +17,7 @@ module Slacks
     attr_accessor :typing_speed
 
     def initialize(token, options={})
+      raise ArgumentError, "Missing required parameter: 'token'" if token.nil? or token.empty?
       @token = token
       @typing_speed = options.fetch(:typing_speed, 100.0)
 
