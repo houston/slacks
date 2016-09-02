@@ -173,20 +173,20 @@ module Slacks
           "is_im" => true,
           "name" => user.username }
       when /^G/
-        Slacks::Channel.new self, groups_by_id.fetch(id) do
+        Slacks::Channel.new(self, groups_by_id.fetch(id) do
           raise ArgumentError, "Unable to find a group with the ID #{id.inspect}"
-        end
+        end)
       else
-        Slacks::Channel.new self, channels_by_id.fetch(id) do
+        Slacks::Channel.new(self, channels_by_id.fetch(id) do
           raise ArgumentError, "Unable to find a channel with the ID #{id.inspect}"
-        end
+        end)
       end
     end
 
     def find_user(id)
-      Slacks::User.new self, users_by_id.fetch(id) do
+      Slacks::User.new(self, users_by_id.fetch(id) do
         raise ArgumentError, "Unable to find a user with the ID #{id.inspect}"
-      end
+      end)
     end
 
     def find_user_by_nickname(nickname)
