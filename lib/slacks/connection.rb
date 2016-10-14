@@ -158,7 +158,19 @@ module Slacks
 
 
     def channels
-      user_id_by_name.keys + group_id_by_name.keys + channel_id_by_name.keys
+      channels = user_id_by_name.keys + group_id_by_name.keys + channel_id_by_name.keys
+      if channels.empty?
+        fetch_channels!
+        fetch_groups!
+        fetch_users!
+      end
+      channels
+    end
+
+    def can_see?(channel)
+      to_channel_id(channel).present?
+    rescue ArgumentError
+      false
     end
 
 
