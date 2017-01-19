@@ -41,8 +41,7 @@ module Slacks
         as_user: true, # post as the authenticated user (rather than as slackbot)
         link_names: 1} # find and link channel names and user names
       params.merge!(attachments: MultiJson.dump(attachments)) if attachments.any?
-      params.merge!(options.select { |key, _| [:username, :as_user, :parse, :link_names,
-        :unfurl_links, :unfurl_media, :icon_url, :icon_emoji].member?(key) })
+      params.merge!(options.select { |key, _| SEND_MESSAGE_PARAMS.member?(key) })
       api("chat.postMessage", params)
     rescue Slacks::ResponseError
       $!.response
@@ -346,6 +345,21 @@ module Slacks
         connection.use Faraday::RaiseErrors
       end
     end
+
+
+
+    SEND_MESSAGE_PARAMS = %i{
+      username
+      as_user
+      parse
+      link_names
+      unfurl_links
+      unfurl_media
+      icon_url
+      icon_emoji
+      thread_ts
+      reply_broadcast
+    }.freeze
 
   end
 end
