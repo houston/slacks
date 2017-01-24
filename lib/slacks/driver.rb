@@ -70,6 +70,10 @@ module Slacks
       @driver.text(message)
     end
 
+    def ping
+      @driver.ping
+    end
+
     def connected?
       @connected || false
     end

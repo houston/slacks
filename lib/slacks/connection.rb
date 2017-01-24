@@ -89,6 +89,10 @@ module Slacks
       websocket.write MultiJson.dump(type: "typing", channel: to_channel_id(channel))
     end
 
+    def ping
+      websocket.ping
+    end
+
 
 
     def listen!
