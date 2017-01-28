@@ -43,8 +43,6 @@ module Slacks
       params.merge!(attachments: MultiJson.dump(attachments)) if attachments.any?
       params.merge!(options.select { |key, _| SEND_MESSAGE_PARAMS.member?(key) })
       api("chat.postMessage", params)
-    rescue Slacks::ResponseError
-      $!.response
     end
     alias :say :send_message
 
@@ -53,8 +51,6 @@ module Slacks
         channel: to_channel_id(channel),
         timestamp: ts }
       api("reactions.get", params)
-    rescue Slacks::ResponseError
-      $!.response
     end
 
     def update_message(ts, message, options={})
@@ -70,8 +66,6 @@ module Slacks
       params.merge!(options.select { |key, _| [:username, :as_user, :parse, :link_names,
         :unfurl_links, :unfurl_media, :icon_url, :icon_emoji].member?(key) })
       api("chat.update", params)
-    rescue Slacks::ResponseError
-      $!.response
     end
 
     def add_reaction(emojis, message)
@@ -81,8 +75,6 @@ module Slacks
           channel: message.channel.id,
           timestamp: message.timestamp })
       end
-    rescue Slacks::ResponseError
-      $!.response
     end
 
     def typing_on(channel)
@@ -97,10 +89,6 @@ module Slacks
 
     def listen!
       response = api("rtm.start")
-      unless response["ok"]
-        raise MigrationInProgress if response["error"] == "migration_in_progress"
-        raise ResponseError.new(response, response["error"])
-      end
       store_context!(response)
 
       @websocket = Slacks::Driver.new
@@ -250,8 +238,6 @@ module Slacks
 
       @groups_by_id = Hash[response.fetch("groups").map { |attrs| [attrs.fetch("id"), attrs] }]
       @group_id_by_name = Hash[response.fetch("groups").map { |attrs| [attrs.fetch("name"), attrs.fetch("id")] }]
-    rescue KeyError
-      raise ResponseError.new(response, $!.message)
     end
 
 
@@ -280,7 +266,6 @@ module Slacks
     def get_dm_for_user_id(user_id)
       user_ids_dm_ids[user_id] ||= begin
         response = api("im.open", user: user_id)
-        raise UnableToDirectMessageError.new(response, user_id) unless response["ok"]
         response["channel"]["id"]
       end
     end
@@ -336,7 +321,13 @@ module Slacks
 
     def api(command, options={})
       response = http.post(command, options.merge(token: token))
-      MultiJson.load(response.body)
+      response = MultiJson.load(response.body)
+      unless response["ok"]
+        response["error"].split(/,\s*/).each do |error_code|
+          raise ::Slacks::Response.fetch(error_code).new(response)
+        end
+      end
+      response
 
     rescue MultiJson::ParseError
       $!.additional_information[:response_body] = response.body
