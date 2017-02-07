@@ -12,10 +12,16 @@ module Slacks
       end
     end
 
+    class UnspecifiedError < ::Slacks::Response::Error
+      def initialize(response)
+        super response, "Request failed with #{response["error"].inspect}"
+      end
+    end
+
     @_errors = {}
 
     def self.fetch(error_code)
-      @_errors.fetch(error_code, ::Slacks::Response::Error)
+      @_errors.fetch(error_code, ::Slacks::Response::UnspecifiedError)
     end
 
     {
