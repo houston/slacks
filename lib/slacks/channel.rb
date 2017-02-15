@@ -12,17 +12,12 @@ module Slacks
     end
 
     def reply(*messages)
-      messages.flatten!
       return unless messages.any?
 
-      first_message = messages.shift
-      message_options = {}
-      message_options = messages.shift if messages.length == 1 && messages[0].is_a?(Hash)
-      slack.send_message(first_message, message_options.merge(channel: id))
-
-      messages.each do |message|
-        sleep message.length / slack.typing_speed
-        slack.send_message(message, channel: id)
+      if messages.first.is_a?(Array)
+        reply_many(messages[0])
+      else
+        reply_one(*messages)
       end
     end
     alias :say :reply
@@ -59,6 +54,19 @@ module Slacks
       return name if private?
       return "@#{name}" if direct_message?
       "##{name}"
+    end
+
+  protected
+
+    def reply_one(message, options={})
+      slack.send_message(message, options.merge(channel: id))
+    end
+
+    def reply_many(messages)
+      messages.each_with_index.map do |message, i|
+        sleep message.length / slack.typing_speed if i > 0
+        slack.send_message(message, channel: id)
+      end
     end
 
   private
