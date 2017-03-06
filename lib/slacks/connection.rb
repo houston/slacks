@@ -319,12 +319,12 @@ module Slacks
 
 
 
-    def api(command, options={})
-      response = http.post(command, options.merge(token: token))
+    def api(command, params={})
+      response = http.post(command, params.merge(token: token))
       response = MultiJson.load(response.body)
       unless response["ok"]
         response["error"].split(/,\s*/).each do |error_code|
-          raise ::Slacks::Response.fetch(error_code).new(response)
+          raise ::Slacks::Response.fetch(error_code).new(command, params, response)
         end
       end
       response

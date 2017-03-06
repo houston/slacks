@@ -3,18 +3,22 @@ require "slacks/core_ext/exception"
 module Slacks
   module Response
     class Error < RuntimeError
-      attr_reader :response
+      attr_reader :command, :params, :response
 
-      def initialize(response, message)
+      def initialize(command, params, response, message)
         super message
+        @command = command
+        @params = params
         @response = response
+        additional_information[:command] = command
+        additional_information[:params] = params
         additional_information[:response] = response
       end
     end
 
     class UnspecifiedError < ::Slacks::Response::Error
-      def initialize(response)
-        super response, "Request failed with #{response["error"].inspect}"
+      def initialize(command, params, response)
+        super command, params, response, "Request failed with #{response["error"].inspect}"
       end
     end
 
@@ -62,8 +66,8 @@ module Slacks
 
       module_eval <<-RUBY, __FILE__, __LINE__ + 1
         class #{class_name} < ::Slacks::Response::Error
-          def initialize(response)
-            super response, "#{message}"
+          def initialize(command, params, response)
+            super command, params, response, "#{message}"
           end
         end
 
