@@ -35,6 +35,7 @@ module Slacks
       "cant_update_message"    => "Authenticated user does not have permission to update this message.",
       "channel_not_found"      => "Value passed for channel was invalid.",
       "edit_window_closed"     => "The message cannot be edited due to the team message edit settings",
+      "fatal_error"            => "",
       "file_comment_not_found" => "File comment specified by file_comment does not exist.",
       "file_not_found"         => "File specified by file does not exist.",
       "invalid_arg_name"       => "The method was passed an argument whose name falls outside the bounds of common decency. This includes very long names and names with non-alphanumeric characters other than _. If you get this error, it is typically an indication that you have made a very malformed API call.",
