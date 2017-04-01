@@ -60,7 +60,7 @@ module Slacks
       "too_many_emoji"         => "The limit for distinct reactions (i.e emoji) on the item has been reached.",
       "too_many_reactions"     => "The limit for reactions a person may add to the item has been reached."
     }.each do |error_code, message|
-      class_name = error_code.classify
+      class_name = error_code.gsub(/(?:^|_)([a-z]+)/) { $1.capitalize }
       class_name = {
         "MsgTooLong" => "MessageTooLong"
       }.fetch(class_name, class_name)
