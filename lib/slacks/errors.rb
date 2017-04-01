@@ -95,4 +95,10 @@ module Slacks
       super "Unable to connect to Slack; a token has no"
     end
   end
+
+  class NotListeningError < ArgumentError
+    def initialize
+      super "Not connected to the RTM API; call `listen!` first"
+    end
+  end
 end

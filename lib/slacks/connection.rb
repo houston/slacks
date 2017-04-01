@@ -77,12 +77,20 @@ module Slacks
       end
     end
 
+
+
     def typing_on(channel)
+      raise NotListeningError unless listening?
       websocket.write MultiJson.dump(type: "typing", channel: to_channel_id(channel))
     end
 
     def ping
+      raise NotListeningError unless listening?
       websocket.ping
+    end
+
+    def listening?
+      !websocket.nil?
     end
 
 
