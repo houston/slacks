@@ -160,7 +160,6 @@ module Slacks
       channels = user_id_by_name.keys + group_id_by_name.keys + channel_id_by_name.keys
       if channels.empty?
         fetch_channels!
-        fetch_groups!
         fetch_users!
       end
       channels
@@ -273,7 +272,7 @@ module Slacks
 
     def get_dm_for_user_id(user_id)
       user_ids_dm_ids[user_id] ||= begin
-        response = api("im.open", user: user_id)
+        response = api("conversations.open", user: user_id)
         response["channel"]["id"]
       end
     end
@@ -281,15 +280,19 @@ module Slacks
 
 
     def fetch_channels!
-      response = api("channels.list")
-      @channels_by_id = response["channels"].index_by { |attrs| attrs["id"] }
-      @channel_id_by_name = Hash[response["channels"].map { |attrs| ["##{attrs["name"]}", attrs["id"]] }]
+      response = api("conversations.list")
+      channels, rest = response["channels"].partition { |attrs| attrs["is_channel"] }
+      groups, ims = rest.partition { |attrs| attrs["is_group"] }
+      @groups_by_id = groups.index_by { |attrs| attrs["id"] }
+      @group_id_by_name = Hash[groups.map { |attrs| [attrs["name"], attrs["id"]] }]
+      user_ids_dm_ids.merge! Hash[ims.map { |attrs| attrs.values_at("user", "id") }]
+      @channels_by_id = channels.index_by { |attrs| attrs["id"] }
+      @channel_id_by_name = Hash[channels.map { |attrs| ["##{attrs["name"]}", attrs["id"]] }]
     end
 
     def fetch_groups!
-      response = api("groups.list")
-      @groups_by_id = response["groups"].index_by { |attrs| attrs["id"] }
-      @group_id_by_name = Hash[response["groups"].map { |attrs| [attrs["name"], attrs["id"]] }]
+      fetch_channels!
+      @group_id_by_name
     end
 
     def fetch_users!
@@ -317,8 +320,7 @@ module Slacks
     def get_user_id_for_dm(dm)
       user_id = user_ids_dm_ids.key(dm)
       unless user_id
-        response = api("im.list")
-        user_ids_dm_ids.merge! Hash[response["ims"].map { |attrs| attrs.values_at("user", "id") }]
+        fetch_channels!
         user_id = user_ids_dm_ids.key(dm)
       end
       raise ArgumentError, "Unable to find a user for the direct message ID #{dm.inspect}" unless user_id
