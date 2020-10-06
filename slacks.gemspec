@@ -25,8 +25,8 @@ Gem::Specification.new do |spec|
   spec.add_dependency "faraday-raise-errors"
   spec.add_dependency "concurrent-ruby"
 
-  spec.add_development_dependency "bundler", "~> 1.10"
-  spec.add_development_dependency "rake", "~> 10.0"
+  spec.add_development_dependency "bundler"
+  spec.add_development_dependency "rake"
   spec.add_development_dependency "minitest", "~> 5.0"
   spec.add_development_dependency "pry"
   spec.add_development_dependency "minitest-reporters"
