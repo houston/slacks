@@ -283,10 +283,10 @@ module Slacks
       response = api("conversations.list")
       channels, rest = response["channels"].partition { |attrs| attrs["is_channel"] }
       groups, ims = rest.partition { |attrs| attrs["is_group"] }
-      @groups_by_id = groups.index_by { |attrs| attrs["id"] }
+      @groups_by_id = groups.each_with_object({}) { |attrs, hash| hash[attrs["id"]] = attrs }
       @group_id_by_name = Hash[groups.map { |attrs| [attrs["name"], attrs["id"]] }]
       user_ids_dm_ids.merge! Hash[ims.map { |attrs| attrs.values_at("user", "id") }]
-      @channels_by_id = channels.index_by { |attrs| attrs["id"] }
+      @channels_by_id = channels.each_with_object({}) { |attrs, hash| hash[attrs["id"]] = attrs }
       @channel_id_by_name = Hash[channels.map { |attrs| ["##{attrs["name"]}", attrs["id"]] }]
     end
 
@@ -302,7 +302,7 @@ module Slacks
 
     def fetch_users!
       response = api("users.list")
-      @users_by_id = response["members"].index_by { |attrs| attrs["id"] }
+      @users_by_id = response["members"].each_with_object({}) { |attrs, hash| hash[attrs["id"]] = attrs }
       @user_id_by_name = Hash[response["members"].map { |attrs| ["@#{attrs["name"]}", attrs["id"]] }]
     end
 
