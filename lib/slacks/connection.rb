@@ -24,10 +24,8 @@ module Slacks
       @user_ids_dm_ids = {}
       @users_by_id = {}
       @user_id_by_name = {}
-      @groups_by_id = {}
-      @group_id_by_name = {}
-      @channels_by_id = {}
-      @channel_id_by_name = {}
+      @conversations_by_id = {}
+      @conversation_ids_by_name = {}
     end
 
 
@@ -116,20 +114,15 @@ module Slacks
           # one, we'll skill it.
           next
 
-        when EVENT_GROUP_JOINED
-          group = data["channel"]
-          @groups_by_id[group["id"]] = group
-          @group_id_by_name[group["name"]] = group["id"]
+        when EVENT_GROUP_JOINED, EVENT_CHANNEL_CREATED
+          conversation = data["channel"]
+          @conversations_by_id[conversation["id"]] = conversation
+          @conversation_ids_by_name[conversation["name"]] = conversation["id"]
 
         when EVENT_USER_JOINED
           user = data["user"]
           @users_by_id[user["id"]] = user
           @user_id_by_name[user["name"]] = user["id"]
-
-        when EVENT_CHANNEL_CREATED
-          channel = data["channel"]
-          @channels_by_id[channel["id"]] = channel
-          @channel_id_by_name[channel["name"]] = channel["id"]
 
         when EVENT_MESSAGE
           # Don't respond to things that this bot said
@@ -157,7 +150,7 @@ module Slacks
 
 
     def channels
-      channels = user_id_by_name.keys + group_id_by_name.keys + channel_id_by_name.keys
+      channels = user_id_by_name.keys + conversation_ids_by_name.keys
       if channels.empty?
         fetch_conversations!
         fetch_users!
@@ -182,13 +175,9 @@ module Slacks
           "id" => id,
           "is_im" => true,
           "name" => user.username }
-      when /^G/
-        Slacks::Channel.new(self, groups_by_id.fetch(id) do
-          raise ArgumentError, "Unable to find a group with the ID #{id.inspect}"
-        end)
       else
-        Slacks::Channel.new(self, channels_by_id.fetch(id) do
-          raise ArgumentError, "Unable to find a channel with the ID #{id.inspect}"
+        Slacks::Channel.new(self, conversations_by_id.fetch(id) do
+          raise ArgumentError, "Unable to find a conversation with the ID #{id.inspect}"
         end)
       end
     end
@@ -223,10 +212,8 @@ module Slacks
     attr_reader :user_ids_dm_ids,
                 :users_by_id,
                 :user_id_by_name,
-                :groups_by_id,
-                :group_id_by_name,
-                :channels_by_id,
-                :channel_id_by_name,
+                :conversations_by_id,
+                :conversation_ids_by_name,
                 :websocket_url,
                 :websocket
 
@@ -237,14 +224,8 @@ module Slacks
       @bot = BotUser.new(response.fetch("self"))
       @team = Team.new(response.fetch("team"))
 
-      @channels_by_id = Hash[response.fetch("channels").map { |attrs| [attrs.fetch("id"), attrs] }]
-      @channel_id_by_name = Hash[response.fetch("channels").map { |attrs| ["##{attrs.fetch("name")}", attrs.fetch("id")] }]
-
-      @users_by_id = Hash[response.fetch("users").map { |attrs| [attrs.fetch("id"), attrs] }]
-      @user_id_by_name = Hash[response.fetch("users").map { |attrs| ["@#{attrs.fetch("name")}", attrs.fetch("id")] }]
-
-      @groups_by_id = Hash[response.fetch("groups").map { |attrs| [attrs.fetch("id"), attrs] }]
-      @group_id_by_name = Hash[response.fetch("groups").map { |attrs| [attrs.fetch("name"), attrs.fetch("id")] }]
+      @conversations_by_id = Hash[response.fetch("channels").map { |attrs| [ attrs.fetch("id"), attrs ] }]
+      @conversation_ids_by_name = Hash[response.fetch("channels").map { |attrs| [ attrs["name"], attrs["id"] ] }]
     end
 
 
@@ -253,13 +234,9 @@ module Slacks
       return name.id if name.is_a?(Slacks::Channel)
       return name if name =~ /^[DGC]/ # this already looks like a channel id
       return get_dm_for_username(name) if name.start_with?("@")
-      return to_group_id(name) unless name.start_with?("#")
 
-      channel_id_by_name[name] || fetch_channels![name] || missing_channel!(name)
-    end
-
-    def to_group_id(name)
-      group_id_by_name[name] || fetch_groups![name] || missing_group!(name)
+      name = name.gsub(/^#/, "") # Leading hashes are no longer a thing in the conversations API
+      conversation_ids_by_name[name] || fetch_conversations![name] || missing_conversation!(name)
     end
 
     def to_user_id(name)
@@ -278,26 +255,11 @@ module Slacks
     end
 
 
-
     def fetch_conversations!
-      response = api("conversations.list")
-      channels, rest = response["channels"].partition { |attrs| attrs["is_channel"] }
-      groups, ims = rest.partition { |attrs| attrs["is_group"] }
-      @groups_by_id = groups.each_with_object({}) { |attrs, hash| hash[attrs["id"]] = attrs }
-      @group_id_by_name = Hash[groups.map { |attrs| [attrs["name"], attrs["id"]] }]
+      conversations, ims = api("conversations.list")["channels"].partition { |attrs| attrs["is_channel"] || attrs["is_group"] }
       user_ids_dm_ids.merge! Hash[ims.map { |attrs| attrs.values_at("user", "id") }]
-      @channels_by_id = channels.each_with_object({}) { |attrs, hash| hash[attrs["id"]] = attrs }
-      @channel_id_by_name = Hash[channels.map { |attrs| ["##{attrs["name"]}", attrs["id"]] }]
-    end
-
-    def fetch_channels!
-      fetch_conversations!
-      @channel_id_by_name
-    end
-
-    def fetch_groups!
-      fetch_conversations!
-      @group_id_by_name
+      @conversations_by_id = Hash[conversations.map { |attrs| [ attrs.fetch("id"), attrs ] }]
+      @conversation_ids_by_name = Hash[conversations.map { |attrs| [ attrs["name"], attrs["id"] ] }]
     end
 
     def fetch_users!
@@ -308,12 +270,8 @@ module Slacks
 
 
 
-    def missing_channel!(name)
-      raise ArgumentError, "Couldn't find a channel named #{name}"
-    end
-
-    def missing_group!(name)
-      raise ArgumentError, "Couldn't find a private group named #{name}"
+    def missing_conversation!(name)
+      raise ArgumentError, "Couldn't find a conversation named #{name}"
     end
 
     def missing_user!(name)
