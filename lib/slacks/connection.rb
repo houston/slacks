@@ -24,10 +24,8 @@ module Slacks
       @user_ids_dm_ids = {}
       @users_by_id = {}
       @user_id_by_name = {}
-      @groups_by_id = {}
-      @group_id_by_name = {}
-      @channels_by_id = {}
-      @channel_id_by_name = {}
+      @conversations_by_id = {}
+      @conversation_ids_by_name = {}
     end
 
 
@@ -42,7 +40,7 @@ module Slacks
         link_names: 1} # find and link channel names and user names
       params.merge!(attachments: MultiJson.dump(attachments)) if attachments.any?
       params.merge!(options.select { |key, _| SEND_MESSAGE_PARAMS.member?(key) })
-      api("chat.postMessage", params)
+      api("chat.postMessage", **params)
     end
     alias :say :send_message
 
@@ -50,7 +48,7 @@ module Slacks
       params = {
         channel: to_channel_id(channel),
         timestamp: ts }
-      api("reactions.get", params)
+      api("reactions.get", **params)
     end
 
     def update_message(ts, message, options={})
@@ -65,15 +63,15 @@ module Slacks
       params.merge!(attachments: MultiJson.dump(attachments)) if attachments.any?
       params.merge!(options.select { |key, _| [:username, :as_user, :parse, :link_names,
         :unfurl_links, :unfurl_media, :icon_url, :icon_emoji].member?(key) })
-      api("chat.update", params)
+      api("chat.update", **params)
     end
 
     def add_reaction(emojis, message)
       Array(emojis).each do |emoji|
-        api("reactions.add", {
+        api("reactions.add",
           name: emoji.gsub(/^:|:$/, ""),
           channel: message.channel.id,
-          timestamp: message.timestamp })
+          timestamp: message.timestamp)
       end
     end
 
@@ -116,20 +114,15 @@ module Slacks
           # one, we'll skill it.
           next
 
-        when EVENT_GROUP_JOINED
-          group = data["channel"]
-          @groups_by_id[group["id"]] = group
-          @group_id_by_name[group["name"]] = group["id"]
+        when EVENT_GROUP_JOINED, EVENT_CHANNEL_CREATED
+          conversation = data["channel"]
+          @conversations_by_id[conversation["id"]] = conversation
+          @conversation_ids_by_name[conversation["name"]] = conversation["id"]
 
         when EVENT_USER_JOINED
           user = data["user"]
           @users_by_id[user["id"]] = user
           @user_id_by_name[user["name"]] = user["id"]
-
-        when EVENT_CHANNEL_CREATED
-          channel = data["channel"]
-          @channels_by_id[channel["id"]] = channel
-          @channel_id_by_name[channel["name"]] = channel["id"]
 
         when EVENT_MESSAGE
           # Don't respond to things that this bot said
@@ -157,10 +150,9 @@ module Slacks
 
 
     def channels
-      channels = user_id_by_name.keys + group_id_by_name.keys + channel_id_by_name.keys
+      channels = user_id_by_name.keys + conversation_ids_by_name.keys
       if channels.empty?
-        fetch_channels!
-        fetch_groups!
+        fetch_conversations!
         fetch_users!
       end
       channels
@@ -183,13 +175,9 @@ module Slacks
           "id" => id,
           "is_im" => true,
           "name" => user.username }
-      when /^G/
-        Slacks::Channel.new(self, groups_by_id.fetch(id) do
-          raise ArgumentError, "Unable to find a group with the ID #{id.inspect}"
-        end)
       else
-        Slacks::Channel.new(self, channels_by_id.fetch(id) do
-          raise ArgumentError, "Unable to find a channel with the ID #{id.inspect}"
+        Slacks::Channel.new(self, conversations_by_id.fetch(id) do
+          raise ArgumentError, "Unable to find a conversation with the ID #{id.inspect}"
         end)
       end
     end
@@ -224,10 +212,8 @@ module Slacks
     attr_reader :user_ids_dm_ids,
                 :users_by_id,
                 :user_id_by_name,
-                :groups_by_id,
-                :group_id_by_name,
-                :channels_by_id,
-                :channel_id_by_name,
+                :conversations_by_id,
+                :conversation_ids_by_name,
                 :websocket_url,
                 :websocket
 
@@ -238,14 +224,8 @@ module Slacks
       @bot = BotUser.new(response.fetch("self"))
       @team = Team.new(response.fetch("team"))
 
-      @channels_by_id = Hash[response.fetch("channels").map { |attrs| [attrs.fetch("id"), attrs] }]
-      @channel_id_by_name = Hash[response.fetch("channels").map { |attrs| ["##{attrs.fetch("name")}", attrs.fetch("id")] }]
-
-      @users_by_id = Hash[response.fetch("users").map { |attrs| [attrs.fetch("id"), attrs] }]
-      @user_id_by_name = Hash[response.fetch("users").map { |attrs| ["@#{attrs.fetch("name")}", attrs.fetch("id")] }]
-
-      @groups_by_id = Hash[response.fetch("groups").map { |attrs| [attrs.fetch("id"), attrs] }]
-      @group_id_by_name = Hash[response.fetch("groups").map { |attrs| [attrs.fetch("name"), attrs.fetch("id")] }]
+      @conversations_by_id = Hash[response.fetch("channels").map { |attrs| [ attrs.fetch("id"), attrs ] }]
+      @conversation_ids_by_name = Hash[response.fetch("channels").map { |attrs| [ attrs["name"], attrs["id"] ] }]
     end
 
 
@@ -254,13 +234,9 @@ module Slacks
       return name.id if name.is_a?(Slacks::Channel)
       return name if name =~ /^[DGC]/ # this already looks like a channel id
       return get_dm_for_username(name) if name.start_with?("@")
-      return to_group_id(name) unless name.start_with?("#")
 
-      channel_id_by_name[name] || fetch_channels![name] || missing_channel!(name)
-    end
-
-    def to_group_id(name)
-      group_id_by_name[name] || fetch_groups![name] || missing_group!(name)
+      name = name.gsub(/^#/, "") # Leading hashes are no longer a thing in the conversations API
+      conversation_ids_by_name[name] || fetch_conversations![name] || missing_conversation!(name)
     end
 
     def to_user_id(name)
@@ -273,39 +249,29 @@ module Slacks
 
     def get_dm_for_user_id(user_id)
       user_ids_dm_ids[user_id] ||= begin
-        response = api("im.open", user: user_id)
+        response = api("conversations.open", user: user_id)
         response["channel"]["id"]
       end
     end
 
 
-
-    def fetch_channels!
-      response = api("channels.list")
-      @channels_by_id = response["channels"].index_by { |attrs| attrs["id"] }
-      @channel_id_by_name = Hash[response["channels"].map { |attrs| ["##{attrs["name"]}", attrs["id"]] }]
-    end
-
-    def fetch_groups!
-      response = api("groups.list")
-      @groups_by_id = response["groups"].index_by { |attrs| attrs["id"] }
-      @group_id_by_name = Hash[response["groups"].map { |attrs| [attrs["name"], attrs["id"]] }]
+    def fetch_conversations!
+      conversations, ims = api("conversations.list")["channels"].partition { |attrs| attrs["is_channel"] || attrs["is_group"] }
+      user_ids_dm_ids.merge! Hash[ims.map { |attrs| attrs.values_at("user", "id") }]
+      @conversations_by_id = Hash[conversations.map { |attrs| [ attrs.fetch("id"), attrs ] }]
+      @conversation_ids_by_name = Hash[conversations.map { |attrs| [ attrs["name"], attrs["id"] ] }]
     end
 
     def fetch_users!
       response = api("users.list")
-      @users_by_id = response["members"].index_by { |attrs| attrs["id"] }
+      @users_by_id = response["members"].each_with_object({}) { |attrs, hash| hash[attrs["id"]] = attrs }
       @user_id_by_name = Hash[response["members"].map { |attrs| ["@#{attrs["name"]}", attrs["id"]] }]
     end
 
 
 
-    def missing_channel!(name)
-      raise ArgumentError, "Couldn't find a channel named #{name}"
-    end
-
-    def missing_group!(name)
-      raise ArgumentError, "Couldn't find a private group named #{name}"
+    def missing_conversation!(name)
+      raise ArgumentError, "Couldn't find a conversation named #{name}"
     end
 
     def missing_user!(name)
@@ -317,8 +283,7 @@ module Slacks
     def get_user_id_for_dm(dm)
       user_id = user_ids_dm_ids.key(dm)
       unless user_id
-        response = api("im.list")
-        user_ids_dm_ids.merge! Hash[response["ims"].map { |attrs| attrs.values_at("user", "id") }]
+        fetch_conversations!
         user_id = user_ids_dm_ids.key(dm)
       end
       raise ArgumentError, "Unable to find a user for the direct message ID #{dm.inspect}" unless user_id
@@ -327,8 +292,29 @@ module Slacks
 
 
 
-    def api(command, params={})
-      response = http.post(command, params.merge(token: token))
+    def api(command, page_limit: MAX_PAGES, **params)
+      params_with_token = params.merge(token: token)
+      response = api_post command, params_with_token
+      fetched_pages = 1
+      cursor = response.dig("response_metadata", "next_cursor")
+      while cursor && !cursor.empty? && fetched_pages < page_limit do
+        api_post(command, params_with_token.merge(cursor: cursor)).each do |key, value|
+          if value.is_a?(Array)
+            response[key].concat value
+          elsif value.is_a?(Hash)
+            response[key].merge! value
+          else
+            response[key] = value
+          end
+        end
+        fetched_pages += 1
+        cursor = response.dig("response_metadata", "next_cursor")
+      end
+      response
+    end
+
+    def api_post(command, params)
+      response = http.post(command, params)
       response = MultiJson.load(response.body)
       unless response["ok"]
         response["error"].split(/,\s*/).each do |error_code|
@@ -363,6 +349,8 @@ module Slacks
       thread_ts
       reply_broadcast
     }.freeze
+
+    MAX_PAGES = 9001
 
   end
 end
