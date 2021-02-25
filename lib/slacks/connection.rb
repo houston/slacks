@@ -249,7 +249,7 @@ module Slacks
 
     def get_dm_for_user_id(user_id)
       user_ids_dm_ids[user_id] ||= begin
-        response = api("conversations.open", user: user_id)
+        response = api("conversations.open", users: user_id)
         response["channel"]["id"]
       end
     end
