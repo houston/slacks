@@ -176,16 +176,27 @@ module Slacks
           "is_im" => true,
           "name" => user.username }
       else
-        Slacks::Channel.new(self, conversations_by_id.fetch(id) do
+        Slacks::Channel.new(self, find_conversation(id))
+      end
+    end
+
+    def find_conversation(id)
+      conversations_by_id.fetch(id) do
+        fetch_conversations!
+        conversations_by_id.fetch(id) do
           raise ArgumentError, "Unable to find a conversation with the ID #{id.inspect}"
-        end)
+        end
       end
     end
 
     def find_user(id)
-      Slacks::User.new(self, users_by_id.fetch(id) do
-        raise ArgumentError, "Unable to find a user with the ID #{id.inspect}"
-      end)
+      user = users_by_id.fetch(id) do
+        fetch_users!
+        users_by_id.fetch(id) do
+          raise ArgumentError, "Unable to find a user with the ID #{id.inspect}"
+        end
+      end
+      Slacks::User.new(self, user)
     end
 
     def find_user_by_nickname(nickname)
@@ -256,7 +267,7 @@ module Slacks
 
 
     def fetch_conversations!
-      conversations, ims = api("conversations.list")["channels"].partition { |attrs| attrs["is_channel"] || attrs["is_group"] }
+      conversations, ims = api("conversations.list", types: "public_channel,private_channel,mpim,im")["channels"].partition { |attrs| attrs["is_channel"] || attrs["is_group"] }
       user_ids_dm_ids.merge! Hash[ims.map { |attrs| attrs.values_at("user", "id") }]
       @conversations_by_id = Hash[conversations.map { |attrs| [ attrs.fetch("id"), attrs ] }]
       @conversation_ids_by_name = Hash[conversations.map { |attrs| [ attrs["name"], attrs["id"] ] }]
