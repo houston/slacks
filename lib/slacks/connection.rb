@@ -176,16 +176,27 @@ module Slacks
           "is_im" => true,
           "name" => user.username }
       else
-        Slacks::Channel.new(self, conversations_by_id.fetch(id) do
+        Slacks::Channel.new(self, find_conversation(id))
+      end
+    end
+
+    def find_conversation(id)
+      conversations_by_id.fetch(id) do
+        fetch_conversations!
+        conversations_by_id.fetch(id) do
           raise ArgumentError, "Unable to find a conversation with the ID #{id.inspect}"
-        end)
+        end
       end
     end
 
     def find_user(id)
-      Slacks::User.new(self, users_by_id.fetch(id) do
-        raise ArgumentError, "Unable to find a user with the ID #{id.inspect}"
-      end)
+      user = users_by_id.fetch(id) do
+        fetch_users!
+        users_by_id.fetch(id) do
+          raise ArgumentError, "Unable to find a user with the ID #{id.inspect}"
+        end
+      end
+      Slacks::User.new(self, user)
     end
 
     def find_user_by_nickname(nickname)
