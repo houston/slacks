@@ -267,7 +267,7 @@ module Slacks
 
 
     def fetch_conversations!
-      conversations, ims = api("conversations.list")["channels"].partition { |attrs| attrs["is_channel"] || attrs["is_group"] }
+      conversations, ims = api("conversations.list", types: "public_channel,private_channel,mpim,im")["channels"].partition { |attrs| attrs["is_channel"] || attrs["is_group"] }
       user_ids_dm_ids.merge! Hash[ims.map { |attrs| attrs.values_at("user", "id") }]
       @conversations_by_id = Hash[conversations.map { |attrs| [ attrs.fetch("id"), attrs ] }]
       @conversation_ids_by_name = Hash[conversations.map { |attrs| [ attrs["name"], attrs["id"] ] }]
