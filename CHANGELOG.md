@@ -1,4 +1,7 @@
 ### v0.6.2
+- Removed remaining calls to `.present?`, since we're not actually dependent on ActiveSupport
+
+### v0.6.2
 - Fixed a regression where groups, DMs, and private channels were not fetched
 
 ### v0.6.1
