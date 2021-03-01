@@ -159,7 +159,8 @@ module Slacks
     end
 
     def can_see?(channel)
-      to_channel_id(channel).present?
+      channel_id = to_channel_id(channel)
+      channel_id && !channel_id.empty?
     rescue ArgumentError
       false
     end
@@ -207,7 +208,8 @@ module Slacks
 
     def user_exists?(username)
       return false if username.nil?
-      to_user_id(username).present?
+      user_id = to_user_id(username)
+      user_id && !user_id.empty?
     rescue ArgumentError
       false
     end
