@@ -22,7 +22,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency "websocket-driver"
   spec.add_dependency "multi_json"
   spec.add_dependency "faraday"
-  spec.add_dependency "faraday-raise-errors"
   spec.add_dependency "concurrent-ruby"
 
   spec.add_development_dependency "bundler"

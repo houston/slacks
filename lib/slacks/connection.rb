@@ -7,7 +7,6 @@ require "slacks/guest_channel"
 require "slacks/team"
 require "slacks/user"
 require "faraday"
-require "faraday/raise_errors"
 
 module Slacks
   class Connection
@@ -344,7 +343,7 @@ module Slacks
 
     def http
       @http ||= Faraday.new(url: "https://slack.com/api").tap do |connection|
-        connection.use Faraday::RaiseErrors
+        connection.response :raise_error
       end
     end
 
