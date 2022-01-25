@@ -93,7 +93,7 @@ module Slacks
 
 
     def listen!
-      response = api("rtm.start")
+      response = api("rtm.connect")
       store_context!(response)
 
       @websocket = Slacks::Driver.new
@@ -236,8 +236,7 @@ module Slacks
       @bot = BotUser.new(response.fetch("self"))
       @team = Team.new(response.fetch("team"))
 
-      @conversations_by_id = Hash[response.fetch("channels").map { |attrs| [ attrs.fetch("id"), attrs ] }]
-      @conversation_ids_by_name = Hash[response.fetch("channels").map { |attrs| [ attrs["name"], attrs["id"] ] }]
+      fetch_conversations!
     end
 
 
